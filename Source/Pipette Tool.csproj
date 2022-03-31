@@ -73,8 +73,10 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="CustomKeyBindingDefOf.cs" />
     <Compile Include="HotSwappableAttribute.cs" />
     <Compile Include="HarmonyPatcher.cs" />
+    <Compile Include="Patch_UIRootOnGUI.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

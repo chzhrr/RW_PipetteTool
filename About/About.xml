@@ -5,7 +5,7 @@
 	<supportedVersions>
 		<li>1.3</li>
 	</supportedVersions>
-	<description>Add "Q" shortcut in Factorio.</description>
+	<description>Add the "Q" shortcut as in Factorio, for conveniently selecting and switching designators.</description>
   <packageId>telardo.PipetteTool</packageId>
   <modDependencies>
     <li>
