@@ -1,7 +1,6 @@
 ﻿using HarmonyLib;
 using RimWorld;
 using Verse;
-using UnityEngine;
 using RimWorld.Planet;
 using System.Collections.Generic;
 using System;
@@ -14,11 +13,12 @@ namespace PipetteTool
     {
         private static readonly Func<Gizmo, Gizmo, int> SortByOrder = (Gizmo lhs, Gizmo rhs) => lhs.order.CompareTo(rhs.order);
 
-        private static List<Designator> AllDesignators = Find.ReverseDesignatorDatabase.AllDesignators;
-        private static List<Designator> AllowedDesignators = new List<Designator>();
+        private static List<Designator> AllDesignators;
+        private static Designator CurrentDesignator;
+        private static List<Thing> SelectableList = new List<Thing>();
 
         private static Thing cacheThing;
-        private static int currentIndex;
+        private static int searchStartingIndex;
 
         public static void Postfix()
         {
@@ -26,48 +26,93 @@ namespace PipetteTool
             {
                 if (CustomKeyBindingDefOf.PipetteToolHotKey.KeyDownEvent)
                 {
-                    List<Thing> selectableList = Find.CurrentMap.thingGrid.ThingsAt(IntVec3.FromVector3(UI.MouseMapPosition())).ToList();
-                    Thing thing = selectableList.FirstOrDefault();
+                    if (AllDesignators == null)
+                    {
+                        ResolveAllDesignators();
+                    }
+                    GetSelectableListUnderMouse();
+                    Thing thing = SelectableList.FirstOrDefault();
                     if (thing == null)
                     {
                         return;
                     }
-                    // invoke our shortcut
-                    if (Find.DesignatorManager.SelectedDesignator == null || thing != cacheThing)
+                    // if current thing is not cached
+                    if (thing != cacheThing)
                     {
-                        RefreshAllowedDesignators(thing);
+                        // start searching at first
+                        searchStartingIndex = 0;
                     }
-                    else
+                    CurrentDesignator = GetNextAllowedDesignator(thing);
+                    if (CurrentDesignator != null)
                     {
-                        currentIndex++;
-                    }
-                    if (AllowedDesignators.Count > currentIndex)
-                    {
-                        Find.DesignatorManager.Select(AllowedDesignators[currentIndex]);
+                        Find.DesignatorManager.Select(CurrentDesignator);
                     }
                     else
                     {
                         Find.DesignatorManager.Deselect();
                     }
-                    selectableList.Clear();
+                    SelectableList.Clear();
                 }
             }
 
-            void RefreshAllowedDesignators(Thing thing)
+            void ResolveAllDesignators()
             {
-                AllowedDesignators.Clear();
-                for (int i = 0; i < AllDesignators.Count; i++)
+                AllDesignators = new List<Designator>(Find.ReverseDesignatorDatabase.AllDesignators);
+                Type selectSimilarType = AccessTools.TypeByName("AllowTool.Designator_SelectSimilarReverse");
+                if (selectSimilarType != null)
+                {
+                    AllDesignators.RemoveAll((Designator des) => des.GetType() == selectSimilarType);
+                }
+                AllDesignators.Add(new Designator_Forbid());
+                AllDesignators.Add(new Designator_Unforbid());
+                AllDesignators.SortStable(SortByOrder);
+            }
+
+            Designator GetNextAllowedDesignator(Thing thing)
+            {
+                cacheThing = thing;
+                for (int i = searchStartingIndex; i < AllDesignators.Count; i++)
                 {
                     Designator designator = AllDesignators[i];
                     AcceptanceReport acceptanceReport = designator.CanDesignateThing(thing);
                     if (acceptanceReport.Accepted)
                     {
-                        AllowedDesignators.Add(designator);
+                        // next time we should start from the next designator
+                        searchStartingIndex = i + 1;
+                        return designator;
                     }
                 }
-                AllowedDesignators.SortStable(SortByOrder);
-                cacheThing = thing;
-                currentIndex = 0;
+                searchStartingIndex = 0;
+                return null;
+            }
+
+            void GetSelectableListUnderMouse()
+            {
+                foreach (Thing thing in Find.CurrentMap.thingGrid.ThingsAt(IntVec3.FromVector3(UI.MouseMapPosition())))
+                {
+                    // exempt: not selectable or under fog
+                    if (ThingSelectionUtility.SelectableByMapClick(thing))
+                    {
+                        SelectableList.Add(thing);
+                    }
+                }
+                // higher altitude -> lower altitude
+                SelectableList.Sort(CompareThingsByDrawAltitude);
+            }
+
+            // We sort things list in ascending order,
+            // thing at higher altitude is smaller in this comparison.
+            int CompareThingsByDrawAltitude(Thing A, Thing B)
+            {
+                if (A.def.Altitude < B.def.Altitude)
+                {
+                    return 1;
+                }
+                if (A.def.Altitude == B.def.Altitude)
+                {
+                    return 0;
+                }
+                return -1;
             }
         }
     }
