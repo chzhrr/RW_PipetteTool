@@ -22,7 +22,10 @@ namespace PipetteTool
 
         public static void Postfix()
         {
-            if (Find.Selector.NumSelected == 0 && Find.MainTabsRoot.OpenTab == null && !WorldRendererUtility.WorldRenderedNow)
+            if (Find.Selector.NumSelected == 0
+                && Find.MainTabsRoot.OpenTab == null
+                && !WorldRendererUtility.WorldRenderedNow
+                && !(Find.DesignatorManager.SelectedDesignator is Designator_Place))
             {
                 if (CustomKeyBindingDefOf.PipetteToolHotKey.KeyDownEvent)
                 {
