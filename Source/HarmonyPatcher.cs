@@ -1,10 +1,12 @@
 ﻿using HarmonyLib;
+using JetBrains.Annotations;
 using Verse;
 
 namespace PipetteTool
 {
     [StaticConstructorOnStartup]
-    internal static class HarmonyPatcher
+    [UsedImplicitly]
+    public static class HarmonyPatcher
     {
         static HarmonyPatcher()
         {

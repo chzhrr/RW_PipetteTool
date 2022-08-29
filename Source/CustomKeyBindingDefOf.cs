@@ -1,4 +1,5 @@
-﻿using RimWorld;
+﻿using JetBrains.Annotations;
+using RimWorld;
 using Verse;
 
 namespace PipetteTool
@@ -6,6 +7,6 @@ namespace PipetteTool
     [DefOf]
     public static class CustomKeyBindingDefOf
     {
-        public static KeyBindingDef PipetteToolHotKey;
+        [UsedImplicitly] public static KeyBindingDef PipetteToolHotKey;
     }
 }

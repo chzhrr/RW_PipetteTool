@@ -5,30 +5,33 @@ using RimWorld.Planet;
 using System.Collections.Generic;
 using System;
 using System.Linq;
+using JetBrains.Annotations;
 
 namespace PipetteTool
 {
     [HarmonyPatch(typeof(UIRoot_Play), "UIRootOnGUI")]
+    [UsedImplicitly]
     public static class Patch_UIRootOnGUI
     {
         // copied from vanilla GizmoGridDrawer
         private static readonly Func<Gizmo, Gizmo, int> SortByOrder = (Gizmo lhs, Gizmo rhs) => lhs.order.CompareTo(rhs.order);
-        
+
         // all designators in the database
-        private static List<Designator> AllAllowedDesignators;
+        private static List<Designator> s_allAllowedDesignators;
 
         // current activated designator
-        private static Designator CurrentDesignator;
+        private static Designator s_currentDesignator;
 
         // temp list for selectable items at mouse position
         private static readonly List<Thing> SelectableList = new List<Thing>();
 
         // last operated thing
-        private static string cachedThingID;
+        private static string s_cachedThingId;
 
         // last activated designator's index
-        private static int searchStartingIndex;
+        private static int s_searchStartingIndex;
 
+        [UsedImplicitly]
         public static void Postfix()
         {
             if (// nothing is selected
@@ -43,7 +46,7 @@ namespace PipetteTool
                 if (CustomKeyBindingDefOf.PipetteToolHotKey.KeyDownEvent)
                 {
                     // get all allowed designators at the first time
-                    if (AllAllowedDesignators == null)
+                    if (s_allAllowedDesignators == null)
                     {
                         ResolveAllDesignators();
                     }
@@ -54,15 +57,15 @@ namespace PipetteTool
                         return;
                     }
                     // if current thing is not cached or has a designation
-                    if (thing.ThingID != cachedThingID || thing.Map?.designationManager?.DesignationOn(thing) != null)
+                    if (thing.ThingID != s_cachedThingId || thing.Map?.designationManager?.DesignationOn(thing) != null)
                     {
                         // start searching at first
-                        searchStartingIndex = 0;
+                        s_searchStartingIndex = 0;
                     }
-                    CurrentDesignator = GetNextAllowedDesignator(thing);
-                    if (CurrentDesignator != null)
+                    s_currentDesignator = GetNextAllowedDesignator(thing);
+                    if (s_currentDesignator != null)
                     {
-                        Find.DesignatorManager.Select(CurrentDesignator);
+                        Find.DesignatorManager.Select(s_currentDesignator);
                     }
                     else
                     {
@@ -74,18 +77,18 @@ namespace PipetteTool
 
             void ResolveAllDesignators()
             {
-                AllAllowedDesignators = new List<Designator>(Find.ReverseDesignatorDatabase.AllDesignators);
+                s_allAllowedDesignators = new List<Designator>(Find.ReverseDesignatorDatabase.AllDesignators);
                 Type selectSimilarType = AccessTools.TypeByName("AllowTool.Designator_SelectSimilarReverse");
                 // select similar needs selecting and registering one thing
                 if (selectSimilarType != null)
                 {
-                    AllAllowedDesignators.RemoveAll((Designator des) => des.GetType() == selectSimilarType);
+                    s_allAllowedDesignators.RemoveAll((Designator des) => des.GetType() == selectSimilarType);
                 }
-                AllAllowedDesignators.Add(new Designator_Forbid());
-                AllAllowedDesignators.Add(new Designator_Unforbid());
+                s_allAllowedDesignators.Add(new Designator_Forbid());
+                s_allAllowedDesignators.Add(new Designator_Unforbid());
                 // inspired by GizmoGridDrawer.DrawGizmoGrid
                 // same order as gizmos' drawing order
-                AllAllowedDesignators.SortStable(SortByOrder);
+                s_allAllowedDesignators.SortStable(SortByOrder);
             }
 
             Designator GetNextAllowedDesignator(Thing thing)
@@ -93,20 +96,20 @@ namespace PipetteTool
                 // If we have activate one designator for this item,
                 // we should activate the next allowed designator next time we press the hot key.
                 // Otherwise, restart from the first allowed one.
-                cachedThingID = thing.ThingID;
-                for (int i = searchStartingIndex; i < AllAllowedDesignators.Count; i++)
+                s_cachedThingId = thing.ThingID;
+                for (int i = s_searchStartingIndex; i < s_allAllowedDesignators.Count; i++)
                 {
-                    Designator designator = AllAllowedDesignators[i];
+                    Designator designator = s_allAllowedDesignators[i];
                     AcceptanceReport acceptanceReport = designator.CanDesignateThing(thing);
                     if (acceptanceReport.Accepted)
                     {
                         // next time we should start from the next designator
-                        searchStartingIndex = i + 1;
+                        s_searchStartingIndex = i + 1;
                         return designator;
                     }
                 }
                 // when switching items, reset
-                searchStartingIndex = 0;
+                s_searchStartingIndex = 0;
                 return null;
             }
 
@@ -126,13 +129,13 @@ namespace PipetteTool
 
             // We sort things list in ascending order,
             // thing at higher altitude is smaller in this comparison.
-            int CompareThingsByDrawAltitude(Thing A, Thing B)
+            int CompareThingsByDrawAltitude(Thing thingA, Thing thingB)
             {
-                if (A.def.Altitude < B.def.Altitude)
+                if (thingA.def.Altitude < thingB.def.Altitude)
                 {
                     return 1;
                 }
-                if (A.def.Altitude == B.def.Altitude)
+                if (thingA.def.Altitude == thingB.def.Altitude)
                 {
                     return 0;
                 }
