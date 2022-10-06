@@ -1,20 +1,21 @@
 ﻿using HarmonyLib;
 using RimWorld;
 using Verse;
-using RimWorld.Planet;
 using System.Collections.Generic;
 using System;
 using System.Linq;
+using System.Reflection;
+using System.Reflection.Emit;
 using JetBrains.Annotations;
 
 namespace PipetteTool
 {
-    [HarmonyPatch(typeof(UIRoot_Play), "UIRootOnGUI")]
+    [HarmonyPatch(typeof(MapInterface), "HandleMapClicks")]
     [UsedImplicitly]
-    public static class Patch_UIRootOnGUI
+    public static class Patch_MapInterface
     {
         // copied from vanilla GizmoGridDrawer
-        private static readonly Func<Gizmo, Gizmo, int> SortByOrder = (Gizmo lhs, Gizmo rhs) => lhs.order.CompareTo(rhs.order);
+        private static readonly Func<Gizmo, Gizmo, int> SortByOrder = (lhs, rhs) => lhs.Order.CompareTo(rhs.Order);
 
         // all designators in the database
         private static List<Designator> s_allAllowedDesignators;
@@ -28,21 +29,30 @@ namespace PipetteTool
         // last operated thing
         private static string s_cachedThingId;
 
-        // last activated designator's index
+        // index of last activated designator
         private static int s_searchStartingIndex;
 
         [UsedImplicitly]
-        public static void Postfix()
+        public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
+        {
+            List<CodeInstruction> codes = instructions.ToList();
+            MethodInfo insertMethod = typeof(Patch_MapInterface).GetMethod("ProcessInputEvents");
+            int targetMethodIndex = codes.FindIndex((x) => x.IsLdarg(0));
+            codes.Insert(targetMethodIndex, new CodeInstruction(OpCodes.Call, insertMethod));
+            return codes;
+        }
+
+        [UsedImplicitly]
+        public static void ProcessInputEvents()
         {
             if (// nothing is selected
                 Find.Selector.NumSelected == 0
                 // no tab is activated
                 && Find.MainTabsRoot.OpenTab == null
-                // not at world view
-                && !WorldRendererUtility.WorldRenderedNow
                 // Q is the default rotate hot key when holding an item to place
                 && !(Find.DesignatorManager.SelectedDesignator is Designator_Place))
             {
+                // if we press the hot key Q
                 if (CustomKeyBindingDefOf.PipetteToolHotKey.KeyDownEvent)
                 {
                     // get all allowed designators at the first time
