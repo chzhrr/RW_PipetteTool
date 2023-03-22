@@ -79,7 +79,7 @@ namespace PipetteTool
         [UsedImplicitly]
         public static void ProcessInputEvents()
         {
-            if (// nothing is selected
+            if ( // nothing is selected
                 Find.Selector.NumSelected == 0
                 // no tab is activated
                 && Find.MainTabsRoot.OpenTab == null
@@ -157,8 +157,8 @@ namespace PipetteTool
                 // inspired by GizmoGridDrawer.DrawGizmoGrid
                 // same order as gizmos' drawing order
                 s_allAllowedDesignators.SortStable(SortByOrder);
-                s_hotkeyPressedTimesByDesignators = Enumerable.Range(0, s_allAllowedDesignators.Count).
-                    ToDictionary(i => s_allAllowedDesignators[i], i => 0);
+                s_hotkeyPressedTimesByDesignators = Enumerable.Range(0, s_allAllowedDesignators.Count)
+                    .ToDictionary(i => s_allAllowedDesignators[i], i => 0);
             }
 
             // We sort things list in descending order,
@@ -211,7 +211,6 @@ namespace PipetteTool
                     }
                     s_allowedDesignatorsInCurrentCycle.RemoveAt(i);
                     i--;
-
                 }
                 // restart the cycle if run out of all designators
                 s_searchStartingIndex = 0;
@@ -220,19 +219,29 @@ namespace PipetteTool
 
             int CompareDesignatorEfforts(Designator lhs, Designator rhs)
             {
+                bool lhsFixed = s_hotkeyPressedTimesByDesignators.ContainsKey(lhs);
+                bool rhsFixed = s_hotkeyPressedTimesByDesignators.ContainsKey(rhs);
+                if (!lhsFixed && !rhsFixed)
+                {
+                    return SortByOrder(lhs, rhs);
+                }
                 // make sure build copy command is the first in the cycle
-                if (!s_hotkeyPressedTimesByDesignators.ContainsKey(lhs))
+                if (!lhsFixed)
                 {
                     return -1;
                 }
-                if (!s_hotkeyPressedTimesByDesignators.ContainsKey(rhs))
+                if (!rhsFixed)
                 {
                     return 1;
                 }
-
+                // cancel first
                 if (lhs is Designator_Cancel)
                 {
                     return -1;
+                }
+                if (rhs is Designator_Cancel)
+                {
+                    return 1;
                 }
                 // designator with more pressed times comes first in the cycle
                 // we want to minimize total pressed times
@@ -241,7 +250,9 @@ namespace PipetteTool
                     return -1;
                 }
                 // if tied, use gizmo rendering order
-                return s_hotkeyPressedTimesByDesignators[lhs] == s_hotkeyPressedTimesByDesignators[rhs] ? SortByOrder(lhs, rhs) : 1;
+                return s_hotkeyPressedTimesByDesignators[lhs] == s_hotkeyPressedTimesByDesignators[rhs]
+                    ? SortByOrder(lhs, rhs)
+                    : 1;
             }
 
             Designator_Build GetBuildCopyDesignator(Building building)
@@ -271,7 +282,6 @@ namespace PipetteTool
                 // des.SetStuffDef(stuffDefRaw);
                 return des;
             }
-
         }
     }
 }
