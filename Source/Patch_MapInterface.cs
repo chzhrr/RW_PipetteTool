@@ -188,6 +188,10 @@ namespace PipetteTool
                 {
                     s_allAllowedDesignators.RemoveAll((Designator des) => des.GetType() == selectSimilarType);
                 }
+                if (ModsConfig.BiotechActive)
+                {
+                    s_allAllowedDesignators.RemoveAll(des => des.GetType() == typeof(Designator_MechControlGroup));
+                }
                 s_allAllowedDesignators.Add(new Designator_Forbid());
                 s_allAllowedDesignators.Add(new Designator_Unforbid());
                 // inspired by GizmoGridDrawer.DrawGizmoGrid
