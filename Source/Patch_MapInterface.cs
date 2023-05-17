@@ -17,12 +17,12 @@ namespace PipetteTool
         #region members
 
         /// <summary>
-        /// Copied from vanilla GizmoGridDrawer, ordering in gizmo button rendering.
+        /// Copied from vanilla GizmoGridDrawer, ordering in gizmo buttons rendering.
         /// </summary>
         private static readonly Func<Gizmo, Gizmo, int> SortByOrder = (lhs, rhs) => lhs.Order.CompareTo(rhs.Order);
 
         /// <summary>
-        /// All designators in the database plus Forbid, UnForbid and BuildCopy.
+        /// All reversed designators in the database plus Forbid, UnForbid and BuildCopy.
         /// </summary>
         private static List<Designator> s_allAllowedDesignators;
 
@@ -83,11 +83,11 @@ namespace PipetteTool
                 Find.Selector.NumSelected == 0
                 // no tab is activated
                 && Find.MainTabsRoot.OpenTab == null
-                // avoid conflict with rotate left designator with default hot-key Q
-                && NotPlaceCommandOrInCycle())
-            {
                 // if we press the hot key Q
-                if (CustomKeyBindingDefOf.PipetteToolHotKey.KeyDownEvent)
+                && CustomKeyBindingDefOf.PipetteToolHotKey.KeyDownEvent)
+            {
+                // avoid conflict with rotate left designator with default hot-key Q
+                if (NotPlaceCommandOrInCycle())
                 {
                     // get all allowed designators at the first time
                     if (s_allAllowedDesignators == null)
@@ -97,6 +97,16 @@ namespace PipetteTool
                     Thing thing = GetFirstThingUnderMouse();
                     if (thing == null)
                     {
+                        TerrainDef terrainDef = GetTerrainDefUnderMouse();
+                        if (terrainDef != null && (terrainDef.IsCarpet || terrainDef.IsFloor))
+                        {
+                            Designator_Build buildTerrain = BuildCopyCommandUtility.FindAllowedDesignator(terrainDef);
+
+                            if (buildTerrain != null)
+                            {
+                                Find.DesignatorManager.Select(buildTerrain);
+                            }
+                        }
                         return;
                     }
                     // if current thing is not cached or has a designation
@@ -135,12 +145,38 @@ namespace PipetteTool
                     }
                     s_selectableList.Clear();
                 }
+                if (SelectedTerrainDesignator())
+                {
+                    Find.DesignatorManager.Deselect();
+                }
             }
 
             bool NotPlaceCommandOrInCycle()
             {
+                /*
+                 * Scenario 1:
+                 * Selected a bed to build from architect menu,
+                 * when pressing Q, do nothing and let it rotate.
+                 *
+                 * Scenario 2:
+                 * Press Q to get a build copy command,
+                 * and press Q again, since we are in cycle, move forward to next designator.
+                 */
                 return !(Find.DesignatorManager.SelectedDesignator is Designator_Place des)
                        || (s_cachedThingDef != null && s_cachedThingDef == des?.PlacingDef);
+            }
+
+            bool SelectedTerrainDesignator()
+            {
+                Designator_Place des = Find.DesignatorManager.SelectedDesignator as Designator_Place;
+                if (des == null)
+                {
+                    return false;
+                }
+                TerrainDef terrainDef = des?.PlacingDef as TerrainDef;
+                bool isCarpet = terrainDef?.IsCarpet ?? false;
+                bool isFloor = terrainDef?.IsFloor ?? false;
+                return isCarpet || isFloor;
             }
 
             void ResolveAllDesignators()
@@ -189,6 +225,12 @@ namespace PipetteTool
                 // higher altitude -> lower altitude
                 s_selectableList.Sort(CompareThingsByDrawAltitude);
                 return s_selectableList.FirstOrDefault();
+            }
+
+            TerrainDef GetTerrainDefUnderMouse()
+            {
+                IntVec3 pos = IntVec3.FromVector3(UI.MouseMapPosition());
+                return pos.GetTerrain(Find.CurrentMap);
             }
 
             Designator GetNextAllowedDesignator(Thing thing)
