@@ -95,6 +95,7 @@ namespace PipetteTool
                         ResolveAllDesignators();
                     }
                     Thing thing = GetFirstThingUnderMouse();
+                    // no thing then copy floor
                     if (thing == null)
                     {
                         TerrainDef terrainDef = GetTerrainDefUnderMouse();
@@ -112,6 +113,9 @@ namespace PipetteTool
                     // if current thing is not cached or has a designation
                     if (thing.ThingID != s_cachedThingId || thing.Map?.designationManager?.DesignationOn(thing) != null)
                     {
+#if DEBUG
+                        Log.Message("[Debug] Start a new cycle.");
+#endif
                         // start a new cycle
                         s_searchStartingIndex = 0;
                         s_hotkeyPressedTimesInThisCycle = 0;
@@ -126,7 +130,31 @@ namespace PipetteTool
                             }
                         }
                         s_allowedDesignatorsInCurrentCycle.SortStable(CompareDesignatorEfforts);
+                        // if has designation, add cancel to the first
+                        // Note that if current thing has designation,
+                        // pressing key will always return a cancel designator.
+                        // since we restart the cycle every time and cancel is accepted at index 0.
+                        // why? The first reason is that you need to cancel first before choosing another designator
+                        // The second reason: you need to rebuild allowed designator list to add back cancel designator
+                        // otherwise, it is not in the list because in the first cycle it's not accepted and removed
+                        if (thing.Map?.designationManager?.DesignationOn(thing) != null)
+                        {
+                            Designator_Cancel cancel = Find.ReverseDesignatorDatabase.Get<Designator_Cancel>();
+                            if (cancel != null)
+                            {
+                                s_allowedDesignatorsInCurrentCycle.Remove(cancel);
+                                s_allowedDesignatorsInCurrentCycle.Insert(0, cancel);
+                            }
+                        }
                     }
+#if DEBUG
+                    Log.Message("[Debug] Designator in current cycle:");
+                    foreach (var designator in s_allowedDesignatorsInCurrentCycle)
+                    {
+                        Log.Message($"{designator.Label}");
+                    }
+                    Log.Message("==============");
+#endif
                     s_currentDesignator = GetNextAllowedDesignator(thing);
                     if (s_currentDesignator != null)
                     {
@@ -145,6 +173,7 @@ namespace PipetteTool
                     }
                     s_selectableList.Clear();
                 }
+                // deselect terrain copy designator when pressing it again
                 if (SelectedTerrainDesignator())
                 {
                     Find.DesignatorManager.Deselect();
@@ -244,22 +273,40 @@ namespace PipetteTool
                 // Otherwise, restart from the first allowed one.
                 s_cachedThingId = thing.ThingID;
                 s_cachedThingDef = thing.def;
+#if DEBUG
+                Log.Message("[Debug] Getting next allowed designator:");
+                Log.Message($"Start from {s_searchStartingIndex}");
+#endif
                 for (int i = s_searchStartingIndex; i < s_allowedDesignatorsInCurrentCycle.Count; i++)
                 {
                     Designator designator = s_allowedDesignatorsInCurrentCycle[i];
                     AcceptanceReport acceptanceReport = designator.CanDesignateThing(thing);
+#if DEBUG
+                    Log.Message($"Checking {designator.Label}");
+                    Log.Message($"Accepted? {acceptanceReport.Accepted}");
+                    Log.Message($"Designator is build copy? {designator is Designator_Build}");
+#endif
                     if (acceptanceReport.Accepted || designator is Designator_Build)
                     {
                         // next time we should start from the next designator
                         s_searchStartingIndex = i + 1;
                         s_hotkeyPressedTimesInThisCycle += 1;
+#if DEBUG
+                        Log.Message($"{designator.Label} accepted, start from {s_searchStartingIndex} next time.");
+#endif
                         return designator;
                     }
+#if DEBUG
+                    Log.Message($"Removing {designator.Label} from all allowed set.");
+#endif
                     s_allowedDesignatorsInCurrentCycle.RemoveAt(i);
                     i--;
                 }
                 // restart the cycle if run out of all designators
                 s_searchStartingIndex = 0;
+#if DEBUG
+                Log.Message($"Run out of designators, set start index to 0.");
+#endif
                 return null;
             }
 
