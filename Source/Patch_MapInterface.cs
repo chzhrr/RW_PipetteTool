@@ -163,7 +163,14 @@ namespace PipetteTool
                         // they will always be the first command in the cycle
                         if (!(s_currentDesignator is Designator_Build))
                         {
-                            s_hotkeyPressedTimesByDesignators[s_currentDesignator] += s_hotkeyPressedTimesInThisCycle;
+                            if (s_hotkeyPressedTimesByDesignators.ContainsKey(s_currentDesignator))
+                            {
+                                s_hotkeyPressedTimesByDesignators[s_currentDesignator] += s_hotkeyPressedTimesInThisCycle;
+                            }
+                            else
+                            {
+                                s_hotkeyPressedTimesByDesignators[s_currentDesignator] = s_hotkeyPressedTimesInThisCycle;
+                            }
                         }
                     }
                     // if there is no other allowed designator, deselect current one
