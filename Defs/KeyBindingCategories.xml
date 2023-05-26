@@ -1,0 +1,10 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+
+<Defs>
+	<KeyBindingCategoryDef>
+		<defName>PipetteToolKeys</defName>
+		<label>Pipette Tool</label>
+		<description>Shortcut for switching designators in pipette tool mod.</description>
+		<checkForConflicts></checkForConflicts>
+	</KeyBindingCategoryDef>
+</Defs>

@@ -2,8 +2,9 @@
 
 <Defs>
 
-  <KeyBindingDef ParentName="GameKeyBinding">
+  <KeyBindingDef>
     <defName>PipetteToolHotKey</defName>
+	<category>PipetteToolKeys</category>
     <label>pipette tool</label>
     <defaultKeyCodeA>Q</defaultKeyCodeA>
   </KeyBindingDef>
