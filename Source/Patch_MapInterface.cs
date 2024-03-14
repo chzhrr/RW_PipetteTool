@@ -69,6 +69,15 @@ namespace PipetteTool
         [UsedImplicitly]
         public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
         {
+            // here
+            // designatorManager.ProcessInputEvents();
+            //IL_000f: ldarg.0
+            //IL_0010: ldfld class Verse.DesignatorManager RimWorld.MapInterface::designatorManager
+            //IL_0015: callvirt instance void Verse.DesignatorManager::ProcessInputEvents()
+            // targeter.ProcessInputEvents();
+            //IL_001a: ldarg.0
+            //IL_001b: ldfld class RimWorld.Targeter RimWorld.MapInterface::targeter
+            //IL_0020: callvirt instance void RimWorld.Targeter::ProcessInputEvents()
             List<CodeInstruction> codes = instructions.ToList();
             MethodInfo insertMethod = typeof(Patch_MapInterface).GetMethod("ProcessInputEvents");
             int targetMethodIndex = codes.FindIndex((x) => x.IsLdarg(0));
