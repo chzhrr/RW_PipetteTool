@@ -26,7 +26,7 @@ namespace PipetteTool
         /// </summary>
         private static List<Designator> s_allAllowedDesignators;
 
-        private static List<Designator> s_allowedDesignatorsInCurrentCycle;
+        private static List<Designator> s_allowedDesignatorsInCurrentCycle = new List<Designator>();
 
         /// <summary>
         /// Self learning, we want to minimize total efforts (hot-key pressed times).
@@ -63,6 +63,8 @@ namespace PipetteTool
         /// Index of last activated designator + 1.
         /// </summary>
         private static int s_searchStartingIndex;
+
+        private static bool s_shouldDeselectNext;
 
         #endregion
 
@@ -110,6 +112,12 @@ namespace PipetteTool
                         TerrainDef terrainDef = GetTerrainDefUnderMouse();
                         if (terrainDef != null && (terrainDef.IsCarpet || terrainDef.IsFloor))
                         {
+                            if (s_shouldDeselectNext)
+                            {
+                                Find.DesignatorManager.Deselect();
+                                s_shouldDeselectNext = false;
+                                return;
+                            }
                             Designator_Build buildTerrain = BuildCopyCommandUtility.FindAllowedDesignator(terrainDef);
 
                             if (buildTerrain != null)
@@ -129,7 +137,9 @@ namespace PipetteTool
                         s_searchStartingIndex = 0;
                         s_hotkeyPressedTimesInThisCycle = 0;
                         s_allAllowedDesignators.SortStable(CompareDesignatorEfforts);
-                        s_allowedDesignatorsInCurrentCycle = new List<Designator>(s_allAllowedDesignators);
+                        s_allowedDesignatorsInCurrentCycle.Clear();
+                        s_allowedDesignatorsInCurrentCycle.AddRange(s_allAllowedDesignators);
+                        // if building, add copy to the first designator
                         if (thing is Building building)
                         {
                             Designator_Build buildCopyDesignator = GetBuildCopyDesignator(building);
@@ -138,7 +148,7 @@ namespace PipetteTool
                                 s_allowedDesignatorsInCurrentCycle.Insert(0, buildCopyDesignator);
                             }
                         }
-                        s_allowedDesignatorsInCurrentCycle.SortStable(CompareDesignatorEfforts);
+                        // s_allowedDesignatorsInCurrentCycle.SortStable(CompareDesignatorEfforts);
                         // if has designation, add cancel to the first
                         // Note that if current thing has designation,
                         // pressing key will always return a cancel designator.
@@ -192,7 +202,8 @@ namespace PipetteTool
                 // deselect terrain copy designator when pressing it again
                 if (SelectedTerrainDesignator())
                 {
-                    Find.DesignatorManager.Deselect();
+                    Find.DesignatorManager.Select(new Designator_RemoveFloor());
+                    s_shouldDeselectNext = true;
                 }
             }
 
@@ -222,28 +233,6 @@ namespace PipetteTool
                 bool isCarpet = terrainDef?.IsCarpet ?? false;
                 bool isFloor = terrainDef?.IsFloor ?? false;
                 return isCarpet || isFloor;
-            }
-
-            void ResolveAllDesignators()
-            {
-                s_allAllowedDesignators = new List<Designator>(Find.ReverseDesignatorDatabase.AllDesignators);
-                Type selectSimilarType = AccessTools.TypeByName("AllowTool.Designator_SelectSimilarReverse");
-                // select similar needs selecting and registering one thing
-                if (selectSimilarType != null)
-                {
-                    s_allAllowedDesignators.RemoveAll((Designator des) => des.GetType() == selectSimilarType);
-                }
-                if (ModsConfig.BiotechActive)
-                {
-                    s_allAllowedDesignators.RemoveAll(des => des.GetType() == typeof(Designator_MechControlGroup));
-                }
-                s_allAllowedDesignators.Add(new Designator_Forbid());
-                s_allAllowedDesignators.Add(new Designator_Unforbid());
-                // inspired by GizmoGridDrawer.DrawGizmoGrid
-                // same order as gizmos' drawing order
-                s_allAllowedDesignators.SortStable(SortByOrder);
-                s_hotkeyPressedTimesByDesignators = Enumerable.Range(0, s_allAllowedDesignators.Count)
-                    .ToDictionary(i => s_allAllowedDesignators[i], i => 0);
             }
 
             // We sort things list in descending order,
@@ -391,6 +380,28 @@ namespace PipetteTool
                 // des.SetStuffDef(stuffDefRaw);
                 return des;
             }
+        }
+
+        private static void ResolveAllDesignators()
+        {
+            s_allAllowedDesignators = new List<Designator>(Find.ReverseDesignatorDatabase.AllDesignators);
+            Type selectSimilarType = AccessTools.TypeByName("AllowTool.Designator_SelectSimilarReverse");
+            // select similar needs selecting and registering one thing
+            if (selectSimilarType != null)
+            {
+                s_allAllowedDesignators.RemoveAll((Designator des) => des.GetType() == selectSimilarType);
+            }
+            if (ModsConfig.BiotechActive)
+            {
+                s_allAllowedDesignators.RemoveAll(des => des.GetType() == typeof(Designator_MechControlGroup));
+            }
+            s_allAllowedDesignators.Add(new Designator_Forbid());
+            s_allAllowedDesignators.Add(new Designator_Unforbid());
+            // inspired by GizmoGridDrawer.DrawGizmoGrid
+            // same order as gizmos' drawing order
+            s_allAllowedDesignators.SortStable(SortByOrder);
+            s_hotkeyPressedTimesByDesignators = Enumerable.Range(0, s_allAllowedDesignators.Count)
+                .ToDictionary(i => s_allAllowedDesignators[i], i => 0);
         }
     }
 }
